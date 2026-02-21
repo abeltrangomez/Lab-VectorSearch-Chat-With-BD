@@ -141,7 +141,7 @@ SELECT directory_name FROM all_directories WHERE directory_name='DATA_PUMP_DIR';
 
 ### Ejecutar bootstrap (un solo script)
 1. Conéctate como `COFORMACION`.
-2. En SQL Worksheet, ejecuta el archivo `bootstrap_practicas_vector_schema.sql`.
+2. En SQL Worksheet, ejecuta el archivo `bootstrap_practicas_vector_schema.sql`(#bootstrap_practicas_vector_schema.sql#).
 
 Resultados esperados:
 - 5 empresas
