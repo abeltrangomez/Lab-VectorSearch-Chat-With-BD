@@ -1,158 +1,160 @@
-# Talleres de Laboratorio: Oracle Autonomous Database + AI Vector Search + Select AI
+# Guía Académica y Técnica: Co-formación con Oracle Autonomous Database  
+**Tema:** búsqueda semántica (vectores) y consulta en lenguaje natural sobre datos de co-formación (estudiantes–empresas–vacantes)  
+**Entorno:** Oracle Autonomous Database (ADB) + Database Actions (SQL Worksheet)
 
 ---
 
-## Tabla de contenido
-
-1. [Visión general](#visión-general)  
-2. [Tecnologías utilizadas](#tecnologías-utilizadas)  
-3. [Taller 1: AI Vector Search (Estudiantes ↔ Vacantes)](#taller-1-ai-vector-search-estudiantes--vacantes)  
-   1. [Objetivos de aprendizaje](#objetivos-de-aprendizaje)  
-   2. [Prerequisitos](#prerequisitos)  
-   3. [Arquitectura de datos](#arquitectura-de-datos)  
-   4. [Paso a paso](#paso-a-paso)  
-4. [Taller 2: Chat con tus datos usando Select AI](#taller-2-chat-con-tus-datos-usando-select-ai)  
-   1. [Objetivos de aprendizaje](#objetivos-de-aprendizaje-1)  
-   2. [Prerequisitos](#prerequisitos-1)  
-   3. [Paso a paso](#paso-a-paso-1)  
+## Contenido
+1. [Introducción](#introducción)  
+2. [Tecnologías y conceptos](#tecnologías-y-conceptos)  
+3. [Taller 1 — Búsqueda semántica y matching Estudiante↔Vacante](#taller-1--búsqueda-semántica-y-matching-estudiantevacante)  
+   - 3.1 [Objetivos](#31-objetivos)  
+   - 3.2 [Preparación: usuario y permisos (COFORMACION)](#32-preparación-usuario-y-permisos-coformacion)  
+   - 3.3 [Bootstrap: tablas, columnas VECTOR y datos](#33-bootstrap-tablas-columnas-vector-y-datos)  
+   - 3.4 [Modelo ONNX + embeddings](#34-modelo-onnx--embeddings)  
+   - 3.5 [Búsqueda semántica y matching automático](#35-búsqueda-semántica-y-matching-automático)  
+4. [Taller 2 — Preguntas en lenguaje natural con Select AI](#taller-2--preguntas-en-lenguaje-natural-con-select-ai)  
+   - 4.1 [Objetivos](#41-objetivos)  
+   - 4.2 [Integración del proveedor GenAI](#42-integración-del-proveedor-genai)  
+   - 4.3 [Consultas en lenguaje natural](#43-consultas-en-lenguaje-natural)  
 5. [Anexos](#anexos)  
-   1. [Checklist de verificación](#checklist-de-verificación)  
-   2. [Solución de problemas](#solución-de-problemas)  
-   3. [Limpieza opcional](#limpieza-opcional)  
-6. [Referencias](#referencias)
+   - A. [Checklist de verificación](#a-checklist-de-verificación)  
+   - B. [Solución de problemas](#b-solución-de-problemas)
 
 ---
 
-## Visión general
+## Introducción
 
-Este repositorio contiene **dos talleres prácticos y aplicados al proyecto en clase** inspirados en los laboratorios oficiales de Oracle LiveLabs:
+En un proceso de **co-formación** (prácticas, pasantías o vinculación universidad–empresa), es común gestionar:
+- **Estudiantes** con un perfil profesional (skills, intereses, experiencia).
+- **Empresas** que publican **vacantes** con un perfil requerido.
+- Un proceso de **matching** para identificar qué estudiantes ajustan mejor a cada vacante.
 
-- **Taller 1 (AI Vector Search):** construcción de un modelo relacional para prácticas empresariales (estudiantes, empresas, vacantes), incorporación de una **columna vectorial** y generación de **embeddings** con un **modelo ONNX importado**. Se implementa:
-  - Búsqueda semántica (consulta → Top-K resultados).
-  - **Match automático** (vacante → ranking de estudiantes) mediante distancia vectorial.
-
-- **Taller 2 (Select AI):** integración de un proveedor GenAI con Autonomous Database y habilitación de **preguntas en lenguaje natural** que se traducen a SQL sobre el mismo modelo de datos (3 tablas principales).
-
-
----
-
-## Tecnologías utilizadas
-
-### 1) Oracle AI Vector Search (vectores en base de datos)
-- Tipo de dato `VECTOR` para almacenar embeddings.
-- Función `VECTOR_EMBEDDING(<modelo> USING <texto> AS data)` para generar embeddings.
-- Función `VECTOR_DISTANCE(v1, v2, COSINE)` para medir similitud (menor distancia ⇒ mayor similitud).
-- Índices vectoriales `CREATE VECTOR INDEX` para acelerar búsquedas aproximadas (ej. HNSW).
-
-### 2) Importación de modelos ONNX (embeddings in-database)
-- `DBMS_CLOUD.GET_OBJECT` para descargar ONNX desde Object Storage a `DATA_PUMP_DIR`.
-- `DBMS_VECTOR.LOAD_ONNX_MODEL` para registrar el ONNX como modelo de embeddings utilizable por `VECTOR_EMBEDDING`.
-
-### 3) Select AI (DBMS_CLOUD_AI)
-- `DBMS_CLOUD_AI.CREATE_PROFILE` para definir un perfil de IA (proveedor + credenciales + lista de objetos).
-- `DBMS_CLOUD_AI.SET_PROFILE` para activarlo en sesión.
-- `DBMS_CLOUD_AI.GENERATE` para acciones:
-  - `showsql`, `runsql`, `explainsql`, `narrate`, `chat`.
+Esta guía implementa un prototipo reproducible sobre **Oracle Autonomous Database** que habilita:
+1. **Búsqueda semántica** sobre texto (perfil del estudiante y perfil requerido de la vacante) mediante **vectores**.
+2. **Ranking automático** (match) Estudiante↔Vacante usando distancia de vectores.
+3. Consultas en **lenguaje natural** sobre el mismo modelo relacional usando **Select AI**.
 
 ---
 
-# Taller 1: AI Vector Search (Estudiantes ↔ Vacantes)
+## Tecnologías y conceptos
 
-## Objetivos de aprendizaje
+### 1) Modelo relacional (3 entidades + asociación)
+- `ESTUDIANTE`: perfil profesional del estudiante.
+- `EMPRESA`: información de empresa.
+- `VACANTES_EMPRESAS`: vacantes por empresa.
+- `ESTUDIANTE_VACANTE`: tabla de asociación (postulaciones / asignaciones).
 
-Al finalizar, podrás:
+### 2) Vectores y embeddings
+- Un **embedding** transforma texto en un vector numérico de alta dimensión.
+- Se almacena en columnas tipo `VECTOR`.
+- La similitud se calcula con métricas como **COSINE**.
 
-1. Crear un **usuario de laboratorio** y otorgar permisos mínimos para operar.
-2. Importar modelos ONNX (vía Object Storage) y cargar modelos en la base.
-3. Modelar tres entidades:
-   - `ESTUDIANTE`
-   - `EMPRESA`
-   - `VACANTES_EMPRESAS`
-   y una tabla de asociación `ESTUDIANTE_VACANTE`.
-4. Crear columnas tipo `VECTOR` y generar embeddings para texto.
-5. Implementar:
-   - búsqueda semántica sobre estudiantes/vacantes,
-   - matching automático vacante ↔ estudiantes.
+### 3) Modelos ONNX en base de datos
+- ONNX es un formato estándar para modelos.
+- El modelo se carga en la base y se usa para generar embeddings desde SQL/PLSQL.
 
-## Arquitectura de datos
-
-### Modelo relacional
-
-- **EMPRESA**: catálogo de empresas.
-- **VACANTES_EMPRESAS**: vacantes publicadas por empresas; incluye `descripcion_perfil` y `perfil_vec`.
-- **ESTUDIANTE**: perfiles de estudiantes; incluye `perfil_profesional` y `perfil_vec`.
-- **ESTUDIANTE_VACANTE**: postulaciones/asociaciones (N:M).
-
-### Esquema lógico (texto)
-
-- `EMPRESA (nit_empresa PK)`
-  - 1 ──── * `VACANTES_EMPRESAS (id_vacante PK, nit_empresa FK)`
-- `ESTUDIANTE (id_estudiante PK)`
-  - * ──── * `VACANTES_EMPRESAS` vía `ESTUDIANTE_VACANTE (id_estudiante FK, id_vacante FK)`
+### 4) Select AI
+- Permite que el usuario haga preguntas en lenguaje natural y la base genere/ejecute SQL.
 
 ---
 
-## Paso a paso
+# Taller 1 — Búsqueda semántica y matching Estudiante↔Vacante
 
-> **Recomendación:** ejecuta los bloques en orden.  
-> **Entorno:** SQL Worksheet en Database Actions.
+## 3.1 Objetivos
+Al finalizar, el estudiante podrá:
+- Crear un **esquema de trabajo** (usuario) con privilegios mínimos para ejecutar tareas de co-formación.
+- Construir el **modelo de datos** y poblarlo con datos de prueba.
+- Importar un **modelo ONNX** y generar embeddings en columnas `VECTOR`.
+- Ejecutar **búsqueda semántica** y **matching automático**.
 
 ---
 
-## 0) Preparación de usuario y permisos (opcional si ya tienes esquema en LiveLabs)
+## 3.2 Preparación: usuario y permisos (COFORMACION)
 
-### 0.1 Conéctate como ADMIN (o usuario con privilegios equivalentes)
+### A) Crear usuario desde Database Actions (UI)
+En **Database Actions → Administration → Database Users → Create User**:
+
+Configurar:
+- **User Name:** `COFORMACION`
+- **Password:** (defínela según tu institución)
+- **Quota on tablespace DATA:** `UNLIMITED`
+- **Password Expired:** OFF  
+- **Account is Locked:** OFF  
+- **Graph:** OFF  
+- **Web Access:** ON  
+- **OML:** OFF  
+- **REST, GraphQL, MongoDB, and Web access:** ON  
+- Click **Create User**
+
+### B) Conceder roles y habilitar REST (SQL)
+En **SQL Worksheet**, conectado como `ADMIN`, ejecutar:
 
 ```sql
-CREATE USER PRACTICAS IDENTIFIED BY "Cambiar#Pwd2026";
+GRANT CONNECT TO COFORMACION;
+GRANT RESOURCE TO COFORMACION;
 
-GRANT DB_DEVELOPER_ROLE TO PRACTICAS;
-
--- Para operar modelos (requerido en varios entornos)
-GRANT CREATE MINING MODEL TO PRACTICAS;
-
--- Si el entorno exige grants explícitos:
-GRANT EXECUTE ON DBMS_CLOUD TO PRACTICAS;
-GRANT EXECUTE ON DBMS_VECTOR TO PRACTICAS;
-```
-
-### 0.2 Conéctate como PRACTICAS
-
-> En Database Actions normalmente seleccionas el usuario o conectas con credenciales.
-
----
-
-## 1) Importación y carga de modelos ONNX (flujo LiveLabs probado)
-
-Este bloque replica el patrón probado en LiveLabs:
-
-1) Descargar ONNX a `DATA_PUMP_DIR` con `DBMS_CLOUD.GET_OBJECT`.  
-2) Cargar el ONNX con `DBMS_VECTOR.LOAD_ONNX_MODEL`.  
-3) Verificar con `USER_MINING_MODELS`.
-
-### 1.1 Descargar + cargar CLIP (texto)
-
-```sql
 BEGIN
-  DBMS_CLOUD.GET_OBJECT(
-    object_uri     => 'https://c4u04.objectstorage.us-ashburn-1.oci.customer-oci.com/p/EcTjWk2IuZPZeNnD_fYMcgUhdNDIDA6rt9gaFj_WZMiL7VvxPBNMY60837hu5hga/n/c4u04/b/livelabsfiles/o/labfiles/clip-vit-base-patch32_txt.onnx',
-    directory_name => 'DATA_PUMP_DIR',
-    file_name      => 'clip-vit-base-patch32_txt.onnx'
+  ORDS_ADMIN.ENABLE_SCHEMA(
+    p_enabled             => TRUE,
+    p_schema              => 'COFORMACION',
+    p_url_mapping_type    => 'BASE_PATH',
+    p_url_mapping_pattern => 'coformacion',
+    p_auto_rest_auth      => TRUE
   );
-END;
-/
-BEGIN
-  DBMS_VECTOR.LOAD_ONNX_MODEL(
-    directory  => 'DATA_PUMP_DIR',
-    file_name  => 'clip-vit-base-patch32_txt.onnx',
-    model_name => 'clip_vit_txt',
-    metadata   => JSON('{"function":"embedding","embeddingOutput":"embedding","input":{"input":["DATA"]}}')
-  );
+  COMMIT;
 END;
 /
 ```
 
-### 1.2 Descargar + cargar MiniLM (texto)
+### C) Permisos operativos (descargas ONNX, directorio, vector)
+Ejecutar como `ADMIN`:
+
+```sql
+GRANT ORDS_RUNTIME_ROLE TO COFORMACION;
+
+GRANT EXECUTE ON DBMS_CLOUD TO COFORMACION;
+GRANT EXECUTE ON DBMS_NETWORK_ACL_ADMIN TO COFORMACION;
+
+GRANT READ, WRITE ON DIRECTORY DATA_PUMP_DIR TO COFORMACION;
+
+GRANT CREATE MINING MODEL TO COFORMACION;
+
+GRANT SELECT ON SYS.V_$VECTOR_MEMORY_POOL TO COFORMACION;
+GRANT SELECT ON SYS.V_$VECTOR_INDEX TO COFORMACION;
+
+-- Si al cargar modelos ONNX aparece "insufficient privileges":
+GRANT EXECUTE ON DBMS_VECTOR TO COFORMACION;
+```
+
+### D) Validación rápida
+Conectado como `COFORMACION`:
+
+```sql
+SELECT USER FROM dual;
+SELECT directory_name FROM all_directories WHERE directory_name='DATA_PUMP_DIR';
+```
+
+---
+
+## 3.3 Bootstrap: tablas, columnas VECTOR y datos
+
+### Ejecutar bootstrap (un solo script)
+1. Conéctate como `COFORMACION`.
+2. En SQL Worksheet, ejecuta el archivo `bootstrap_practicas_vector_schema.sql`.
+
+Resultados esperados:
+- 5 empresas
+- 10 vacantes
+- 20 estudiantes
+- 10 asociaciones
+
+---
+
+## 3.4 Modelo ONNX + embeddings
+
+### A) Importar y cargar modelo ONNX (texto)
+Conectado como `COFORMACION`:
 
 ```sql
 BEGIN
@@ -174,7 +176,7 @@ END;
 /
 ```
 
-### 1.3 Verificar modelos cargados
+Verificación:
 
 ```sql
 SELECT model_name, mining_function, algorithm, algorithm_type, model_size
@@ -182,78 +184,98 @@ FROM user_mining_models
 ORDER BY model_name;
 ```
 
----
-
-# Página 1 — Crear Estudiantes
-
-## 2) Crear tabla ESTUDIANTE con columna vectorial
-
-```sql
-CREATE TABLE estudiante (
-  id_estudiante        NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-  tipodoc              VARCHAR2(2)  NOT NULL CHECK (tipodoc IN ('CC','TI')),
-  numerodoc            VARCHAR2(30) NOT NULL,
-  nombre               VARCHAR2(100) NOT NULL,
-  apellidos            VARCHAR2(100) NOT NULL,
-  telefono             VARCHAR2(30),
-  estado_practica      VARCHAR2(40) NOT NULL CHECK (
-    estado_practica IN ('EN ENTREVISTAS','NO CUMPLE CRITERIOS ACADEMICOS','ACEPTADO POR EMPRESA')
-  ),
-  estado_academico     VARCHAR2(10) NOT NULL CHECK (estado_academico IN ('ACTIVO','INACTIVO')),
-  perfil_profesional   CLOB NOT NULL,
-
-  -- Columna para embeddings
-  perfil_vec           VECTOR,
-
-  CONSTRAINT uq_est_doc UNIQUE (tipodoc, numerodoc)
-);
-```
-
-## 3) Poblar la tabla con al menos 20 registros
-
-```sql
--- (Dataset de 20 registros; ver versión completa en este documento)
--- Inserciones completas incluidas en la versión entregada.
-```
-
-## 4) Generar embeddings para estudiantes
-
+### B) Generar embeddings para estudiantes y vacantes
 ```sql
 UPDATE estudiante
 SET perfil_vec = VECTOR_EMBEDDING(minilm_l12_v2 USING perfil_profesional AS data);
 
+UPDATE vacantes_empresas
+SET perfil_vec = VECTOR_EMBEDDING(minilm_l12_v2 USING descripcion_perfil AS data);
+
 COMMIT;
 ```
 
 ---
 
-# Taller 2: Chat con tus datos usando Select AI
+## 3.5 Búsqueda semántica y matching automático
 
-## Objetivos de aprendizaje
-
-1. Integrar un proveedor GenAI con Autonomous Database mediante un **AI Profile**.
-2. Habilitar preguntas en lenguaje natural sobre el modelo relacional.
-3. Utilizar acciones `showsql`, `runsql`, `explainsql`, `narrate` y `chat`.
-
-## Prerequisitos
-
-- Taller 1 completado (tablas y datos existentes).
-- Un proveedor GenAI configurado y accesible desde ADB.
-- Una credencial creada en ADB (p. ej. `GENAI_CRED`).
-
-## Paso a paso
-
+### A) Búsqueda semántica: texto libre → Top estudiantes
 ```sql
-COMMENT ON TABLE estudiante IS 'Estudiantes que buscan práctica. Incluye perfil_profesional y estados.';
-COMMENT ON TABLE vacantes_empresas IS 'Vacantes publicadas por empresas. Incluye embedding.';
+VAR q CLOB;
+EXEC :q := 'DevOps junior con Docker, CI/CD, Kubernetes básico y monitoreo';
+
+WITH query_vec AS (
+  SELECT VECTOR_EMBEDDING(minilm_l12_v2 USING :q AS data) AS v
+  FROM dual
+)
+SELECT
+  e.id_estudiante, e.nombre, e.apellidos,
+  VECTOR_DISTANCE(e.perfil_vec, q.v, COSINE) AS distancia
+FROM estudiante e
+CROSS JOIN query_vec q
+WHERE e.estado_academico = 'ACTIVO'
+ORDER BY distancia
+FETCH FIRST 5 ROWS ONLY;
+```
+
+### B) Matching automático: una vacante → ranking de estudiantes
+```sql
+VAR vacante_id NUMBER;
+EXEC :vacante_id := 7;
+
+WITH vac AS (
+  SELECT perfil_vec FROM vacantes_empresas WHERE id_vacante = :vacante_id
+)
+SELECT
+  e.id_estudiante, e.nombre, e.apellidos,
+  VECTOR_DISTANCE(e.perfil_vec, v.perfil_vec, COSINE) AS distancia
+FROM estudiante e
+CROSS JOIN vac v
+WHERE e.estado_academico = 'ACTIVO'
+  AND e.estado_practica <> 'NO CUMPLE CRITERIOS ACADEMICOS'
+ORDER BY distancia
+FETCH FIRST 10 ROWS ONLY;
+```
+
+### C) (Opcional) Índices vectoriales
+```sql
+CREATE VECTOR INDEX idx_est_perfil_vec
+ON estudiante (perfil_vec)
+ORGANIZATION INMEMORY NEIGHBOR GRAPH
+DISTANCE COSINE;
+
+CREATE VECTOR INDEX idx_vac_perfil_vec
+ON vacantes_empresas (perfil_vec)
+ORGANIZATION INMEMORY NEIGHBOR GRAPH
+DISTANCE COSINE;
+```
+
+---
+
+# Taller 2 — Preguntas en lenguaje natural con Select AI
+
+## 4.1 Objetivos
+Al finalizar, el estudiante podrá:
+- Crear un perfil de IA para consultar el esquema de co-formación en lenguaje natural.
+- Generar SQL (`showsql`) y ejecutar SQL (`runsql`) desde prompts.
+- Obtener explicaciones (`explainsql`) y narrativas (`narrate`).
+
+## 4.2 Integración del proveedor GenAI
+
+### A) Añadir metadatos (comentarios)
+```sql
+COMMENT ON TABLE estudiante IS 'Estudiantes del programa de co-formación. Incluye perfil profesional y estados.';
+COMMENT ON TABLE vacantes_empresas IS 'Vacantes por empresa. Incluye perfil requerido y embeddings.';
 COMMENT ON TABLE empresa IS 'Empresas con NIT, sector, ciudad y contacto.';
+COMMENT ON COLUMN estudiante.estado_practica IS 'EN ENTREVISTAS / NO CUMPLE CRITERIOS ACADEMICOS / ACEPTADO POR EMPRESA';
 COMMIT;
 ```
 
+### B) Crear y activar perfil Select AI
 ```sql
 BEGIN
   DBMS_CLOUD_AI.CREATE_PROFILE(
-    profile_name => 'PRACTICAS_AI',
+    profile_name => 'COFORMACION_AI',
     attributes   => '{
       "provider": "oci",
       "credential_name": "GENAI_CRED",
@@ -265,22 +287,31 @@ BEGIN
       "comments": "true"
     }',
     status      => 'enabled',
-    description => 'Select AI para consultas en lenguaje natural'
+    description => 'Perfil para consultas en lenguaje natural sobre co-formación'
   );
+END;
+/
+BEGIN
+  DBMS_CLOUD_AI.SET_PROFILE(profile_name => 'COFORMACION_AI');
 END;
 /
 ```
 
+---
+
+## 4.3 Consultas en lenguaje natural
+
 ```sql
-BEGIN
-  DBMS_CLOUD_AI.SET_PROFILE(profile_name => 'PRACTICAS_AI');
-END;
-/
+SELECT DBMS_CLOUD_AI.GENERATE(
+  prompt => '¿Cuántos estudiantes están ACTIVO y en EN ENTREVISTAS?',
+  action => 'showsql'
+) AS resp
+FROM dual;
 ```
 
 ```sql
 SELECT DBMS_CLOUD_AI.GENERATE(
-  prompt => '¿Cuántos estudiantes están activos y en entrevistas?',
+  prompt => 'Lista las 5 vacantes más próximas a cerrar con nombre de empresa y ciudad.',
   action => 'runsql'
 ) AS resp
 FROM dual;
@@ -288,10 +319,31 @@ FROM dual;
 
 ---
 
-# Referencias
+# Anexos
 
-- Oracle SQL Reference: CREATE VECTOR INDEX  
-  https://docs.oracle.com/en/database/oracle/oracle-database/26/sqlrf/create-vector-index.html
-- Oracle ADB: DBMS_CLOUD_AI (Select AI)  
-  https://docs.oracle.com/en-us/iaas/autonomous-database-serverless/doc/dbms-cloud-ai-package.html
+## A) Checklist de verificación
 
+```sql
+SELECT COUNT(*) AS empresas FROM empresa;
+SELECT COUNT(*) AS vacantes FROM vacantes_empresas;
+SELECT COUNT(*) AS estudiantes FROM estudiante;
+SELECT COUNT(*) AS asociaciones FROM estudiante_vacante;
+```
+
+```sql
+SELECT model_name FROM user_mining_models ORDER BY 1;
+```
+
+```sql
+SELECT COUNT(*) total, SUM(CASE WHEN perfil_vec IS NOT NULL THEN 1 ELSE 0 END) con_vector
+FROM estudiante;
+
+SELECT COUNT(*) total, SUM(CASE WHEN perfil_vec IS NOT NULL THEN 1 ELSE 0 END) con_vector
+FROM vacantes_empresas;
+```
+
+## B) Solución de problemas
+
+- **Permisos ONNX (GET_OBJECT):** verifica `DBMS_CLOUD` y `DATA_PUMP_DIR`.
+- **Permisos LOAD_ONNX_MODEL:** concede `EXECUTE ON DBMS_VECTOR`.
+- **Modelo no visible:** revisar `USER_MINING_MODELS`.
