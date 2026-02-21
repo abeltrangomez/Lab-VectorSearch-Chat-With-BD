@@ -1,9 +1,5 @@
 # Talleres de Laboratorio: Oracle Autonomous Database + AI Vector Search + Select AI
 
-**Formato:** guía académica y técnica (paso a paso)  
-**Audiencia:** estudiantes, docentes e investigadores que deseen implementar búsqueda semántica (vectores) y consultas en lenguaje natural sobre datos relacionales.  
-**Plataforma objetivo:** **Oracle Autonomous Database (ADB)** con **Database Actions** y soporte de **AI Vector Search** y **Select AI**.
-
 ---
 
 ## Tabla de contenido
@@ -29,7 +25,7 @@
 
 ## Visión general
 
-Este repositorio contiene **dos talleres prácticos** inspirados en los laboratorios oficiales de Oracle LiveLabs:
+Este repositorio contiene **dos talleres prácticos y aplicados al proyecto en clase** inspirados en los laboratorios oficiales de Oracle LiveLabs:
 
 - **Taller 1 (AI Vector Search):** construcción de un modelo relacional para prácticas empresariales (estudiantes, empresas, vacantes), incorporación de una **columna vectorial** y generación de **embeddings** con un **modelo ONNX importado**. Se implementa:
   - Búsqueda semántica (consulta → Top-K resultados).
@@ -37,7 +33,6 @@ Este repositorio contiene **dos talleres prácticos** inspirados en los laborato
 
 - **Taller 2 (Select AI):** integración de un proveedor GenAI con Autonomous Database y habilitación de **preguntas en lenguaje natural** que se traducen a SQL sobre el mismo modelo de datos (3 tablas principales).
 
-> Importante: estos talleres **evitan construir una app APEX automatizada**. Todo se ejecuta con **SQL / PL/SQL** en **Database Actions (SQL Worksheet)**, siguiendo el enfoque técnico de los labs.
 
 ---
 
@@ -78,12 +73,6 @@ Al finalizar, podrás:
 5. Implementar:
    - búsqueda semántica sobre estudiantes/vacantes,
    - matching automático vacante ↔ estudiantes.
-
-## Prerequisitos
-
-- Acceso a **Oracle Cloud** y una **Autonomous Database** provisionada.
-- Acceso a **Database Actions** (SQL Worksheet).
-- Permisos para ejecutar paquetes `DBMS_CLOUD` y `DBMS_VECTOR` (en LiveLabs se encuentran habilitados).
 
 ## Arquitectura de datos
 
