@@ -77,7 +77,7 @@ En **Database Actions → Administration → Database Users → Create User**:
 
 Configurar:
 - **User Name:** `COFORMACION`
-- **Password:** (defínela según tu institución)
+- **Password:** `Welcome_12345`
 - **Quota on tablespace DATA:** `UNLIMITED`
 - **Password Expired:** OFF  
 - **Account is Locked:** OFF  
