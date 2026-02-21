@@ -14,6 +14,26 @@
 --   Ejecutar como el esquema dueño de las tablas (por ejemplo, PRACTICAS)
 -- =====================================================================
 
+
+-- ========== 0) Limpieza idempotente adicional (view/triggers) =========
+BEGIN
+  EXECUTE IMMEDIATE 'DROP VIEW v_match_vacante_estudiante';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TRIGGER trg_estudiante_vec';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'DROP TRIGGER trg_vacante_vec';
+EXCEPTION WHEN OTHERS THEN NULL;
+END;
+/
+
 -- ========== 0) Limpieza idempotente (ignora si no existe) =============
 
 BEGIN
@@ -237,5 +257,53 @@ SELECT
   SUM(CASE WHEN perfil_vec IS NULL THEN 1 ELSE 0 END) AS vacantes_vec_null,
   COUNT(*) AS vacantes_total
 FROM vacantes_empresas;
+
+
+
+-- ================== 4) View de Matching y Triggers ====================
+-- La vista calcula el ranking estudiante↔vacante en tiempo de consulta.
+-- Los triggers generan embeddings automáticamente al insertar/actualizar texto.
+--
+-- Requisito:
+--   Debe existir el modelo de embedding 'minilm_l12_v2' cargado en la base.
+--   Si no está cargado, los INSERT/UPDATE que disparen el trigger fallarán.
+
+-- 4.1 View: ranking de candidatos por vacante
+CREATE OR REPLACE VIEW v_match_vacante_estudiante AS
+SELECT
+  v.id_vacante,
+  v.nit_empresa,
+  e.id_estudiante,
+  e.nombre,
+  e.apellidos,
+  e.estado_academico,
+  e.estado_practica,
+  VECTOR_DISTANCE(e.perfil_vec, v.perfil_vec, COSINE) AS distancia
+FROM vacantes_empresas v
+JOIN estudiante e
+  ON e.estado_academico = 'ACTIVO'
+ AND e.estado_practica <> 'NO CUMPLE CRITERIOS ACADEMICOS'
+WHERE v.perfil_vec IS NOT NULL
+  AND e.perfil_vec IS NOT NULL;
+
+-- 4.2 Trigger: genera embedding del estudiante
+CREATE OR REPLACE TRIGGER trg_estudiante_vec
+BEFORE INSERT OR UPDATE OF perfil_profesional
+ON estudiante
+FOR EACH ROW
+BEGIN
+  :NEW.perfil_vec := VECTOR_EMBEDDING(minilm_l12_v2 USING :NEW.perfil_profesional AS data);
+END;
+/
+
+-- 4.3 Trigger: genera embedding de la vacante
+CREATE OR REPLACE TRIGGER trg_vacante_vec
+BEFORE INSERT OR UPDATE OF descripcion_perfil
+ON vacantes_empresas
+FOR EACH ROW
+BEGIN
+  :NEW.perfil_vec := VECTOR_EMBEDDING(minilm_l12_v2 USING :NEW.descripcion_perfil AS data);
+END;
+/
 
 PROMPT === Fin del bootstrap ===
