@@ -59,7 +59,7 @@ Esta guía implementa un prototipo reproducible sobre **Oracle Autonomous Databa
 
 ---
 
-# Taller 1 — Búsqueda semántica y matching Estudiante↔Vacante
+# Parte 1 — Búsqueda semántica y matching Estudiante↔Vacante
 
 ## 3.1 Objetivos
 Al finalizar, el estudiante podrá:
@@ -252,7 +252,7 @@ DISTANCE COSINE;
 
 ---
 
-# Taller 2 — Preguntas en lenguaje natural con Select AI
+# Parte 2 — Preguntas en lenguaje natural con Select AI
 
 ## 4.1 Objetivos
 Al finalizar, el estudiante podrá:
