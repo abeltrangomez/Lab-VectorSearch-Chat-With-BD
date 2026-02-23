@@ -224,20 +224,43 @@ FETCH EXACT FIRST 5 ROWS ONLY;
 
 ### B) Matching automático: una vacante → ranking de estudiantes
 ```sql
+
+VAR vacante_id NUMBER;
+EXEC :vacante_id := 7;
+
+SELECT
+  v.id_vacante,
+  e.nombre_empresa,
+  e.ciudad,
+  v.fecha_apertura_vacante,
+  v.fecha_cierre_vacante,
+  v.descripcion_perfil
+FROM vacantes_empresas v
+JOIN empresa e
+  ON e.nit_empresa = v.nit_empresa
+WHERE v.id_vacante = :vacante_id;
+
+-- Detalle / Ranking de candidatos (NO repite la descripción)
 VAR vacante_id NUMBER;
 EXEC :vacante_id := 7;
 
 WITH vac AS (
-  SELECT perfil_vec FROM vacantes_empresas WHERE id_vacante = :vacante_id
+  SELECT perfil_vec
+  FROM vacantes_empresas
+  WHERE id_vacante = :vacante_id
 )
 SELECT
-  e.id_estudiante, e.nombre, e.apellidos,
-  VECTOR_DISTANCE(e.perfil_vec, v.perfil_vec, COSINE) AS distancia
+  e.id_estudiante,
+  e.nombre,
+  e.apellidos,
+  e.perfil_profesional AS perfil_estudiante,
+  VECTOR_DISTANCE(e.perfil_vec, (SELECT perfil_vec FROM vac), COSINE) AS distancia
 FROM estudiante e
-CROSS JOIN vac v
 WHERE e.estado_academico = 'ACTIVO'
   AND e.estado_practica <> 'NO CUMPLE CRITERIOS ACADEMICOS'
-ORDER BY distancia
+  AND e.perfil_vec IS NOT NULL
+  AND (SELECT perfil_vec FROM vac) IS NOT NULL
+ORDER BY 5
 FETCH FIRST 10 ROWS ONLY;
 ```
 
