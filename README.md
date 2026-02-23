@@ -311,25 +311,23 @@ COMMIT;
 ### B) Crear y activar perfil Select AI
 ```sql
 BEGIN
+  DBMS_CLOUD_AI.DROP_PROFILE(profile_name => 'genai', force => TRUE);
+
   DBMS_CLOUD_AI.CREATE_PROFILE(
-    profile_name => 'COFORMACION_AI',
+    profile_name => 'genai',
     attributes   => '{
       "provider": "oci",
-      "credential_name": "GENAI_CRED",
+      "credential_name": "OCI$RESOURCE_PRINCIPAL",
+      "region": "sa-saopaulo-1",
+      "comments": true,
       "object_list": [
-        {"owner": "' || USER || '", "name": "ESTUDIANTE"},
-        {"owner": "' || USER || '", "name": "VACANTES_EMPRESAS"},
-        {"owner": "' || USER || '", "name": "EMPRESA"}
-      ],
-      "comments": "true"
-    }',
-    status      => 'enabled',
-    description => 'Perfil para consultas en lenguaje natural sobre co-formación'
+        {"owner": "COFORMACION", "name": "EMPRESA"},
+        {"owner": "COFORMACION", "name": "VACANTES_EMPRESAS"},
+        {"owner": "COFORMACION", "name": "ESTUDIANTE"},
+        {"owner": "COFORMACION", "name": "ESTUDIANTE_VACANTE"}
+      ]
+    }'
   );
-END;
-/
-BEGIN
-  DBMS_CLOUD_AI.SET_PROFILE(profile_name => 'COFORMACION_AI');
 END;
 /
 ```
