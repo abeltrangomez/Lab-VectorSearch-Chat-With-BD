@@ -1,4 +1,4 @@
-# Guía Académica y Técnica: Co-formación con Oracle Autonomous Database  
+# Guía: Co-formación con Oracle Autonomous Database  IA
 **Tema:** búsqueda semántica (vectores) y consulta en lenguaje natural sobre datos de co-formación (estudiantes–empresas–vacantes)  
 **Entorno:** Oracle Autonomous Database (ADB) + Database Actions (SQL Worksheet)
 
