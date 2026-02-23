@@ -200,20 +200,7 @@ Resultados esperados:
 
 ---
 
-### Generar embeddings para estudiantes y vacantes
-```sql
-UPDATE estudiante
-SET perfil_vec = VECTOR_EMBEDDING(minilm_l12_v2 USING perfil_profesional AS data);
-
-UPDATE vacantes_empresas
-SET perfil_vec = VECTOR_EMBEDDING(minilm_l12_v2 USING descripcion_perfil AS data);
-
-COMMIT;
-```
-
----
-
-## 3.5 Búsqueda semántica y matching automático
+## 3.4 Búsqueda semántica y matching automático
 
 ### A) Búsqueda semántica: texto libre → Top estudiantes
 ```sql
