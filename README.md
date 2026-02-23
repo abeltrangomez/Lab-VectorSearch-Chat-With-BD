@@ -72,6 +72,8 @@ Al finalizar, el estudiante podrá:
 
 ## 3.2 Preparación: usuario y permisos (COFORMACION)
 
+### Debe ya tener creada la ADB version 26.ai en la region correcta
+
 ### A) Crear usuario desde Database Actions (UI)
 En **Database Actions → Administration → Database Users → Create User**:
 
@@ -82,7 +84,6 @@ Configurar:
 - **Password Expired:** OFF  
 - **Account is Locked:** OFF  
 - **Graph:** OFF  
-- **Web Access:** ON  
 - **OML:** OFF  
 - **REST, GraphQL, MongoDB, and Web access:** ON  
 - Click **Create User**
