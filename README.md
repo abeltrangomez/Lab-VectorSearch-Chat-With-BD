@@ -204,21 +204,22 @@ Resultados esperados:
 
 ### A) Búsqueda semántica: texto libre → Top estudiantes
 ```sql
-VAR q CLOB;
-EXEC :q := 'DevOps junior con Docker, CI/CD, Kubernetes básico y monitoreo';
+VAR q VARCHAR2(4000);
+EXEC :q := 'Devops';
 
-WITH query_vec AS (
-  SELECT VECTOR_EMBEDDING(minilm_l12_v2 USING :q AS data) AS v
-  FROM dual
-)
 SELECT
-  e.id_estudiante, e.nombre, e.apellidos,
-  VECTOR_DISTANCE(e.perfil_vec, q.v, COSINE) AS distancia
+  e.nombre || ' ' || e.apellidos AS name,
+  VECTOR_DISTANCE(
+    e.perfil_vec,
+    VECTOR_EMBEDDING(minilm_l12_v2 USING :q AS data),
+    COSINE
+  ) AS distance,
+  e.perfil_profesional AS description
 FROM estudiante e
-CROSS JOIN query_vec q
 WHERE e.estado_academico = 'ACTIVO'
-ORDER BY distancia
-FETCH FIRST 5 ROWS ONLY;
+  AND e.perfil_vec IS NOT NULL
+ORDER BY 2
+FETCH EXACT FIRST 5 ROWS ONLY;
 ```
 
 ### B) Matching automático: una vacante → ranking de estudiantes
