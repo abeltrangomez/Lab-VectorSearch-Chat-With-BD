@@ -337,19 +337,48 @@ END;
 ## 4.3 Consultas en lenguaje natural
 
 ```sql
+
+-- 1) SHOWSQL: Solo genera el SQL (no ejecuta)
 SELECT DBMS_CLOUD_AI.GENERATE(
-  prompt => '¿Cuántos estudiantes están ACTIVO y en EN ENTREVISTAS?',
-  action => 'showsql'
-) AS resp
-FROM dual;
+         prompt       => 'Dame el tipo de documento, el número de documento y el nombre de los estudiantes que están en ''EN ENTREVISTAS''.',
+         profile_name => 'genai',
+         action       => 'showsql'
+       ) AS resp
+FROM (SELECT 1 AS x);
+
+-- 2) RUNSQL: Genera y ejecuta 
+SELECT DBMS_CLOUD_AI.GENERATE(
+         prompt       => 'Dame el tipo de documento, el número de documento y el nombre de los estudiantes que están en ''EN ENTREVISTAS''.',
+         profile_name => 'genai',
+         action       => 'runsql'
+       ) AS resp
+FROM (SELECT 1 AS x);
+
+-- 3) NARRATE: Ejecuta y responde en español
+SELECT DBMS_CLOUD_AI.GENERATE(
+         prompt       => 'En español y de forma breve: lista el tipo de documento, número de documento y nombre de los estudiantes que están en ''EN ENTREVISTAS''.',
+         profile_name => 'genai',
+         action       => 'narrate'
+       ) AS resp
+FROM (SELECT 1 AS x);
+
+-- 4) CHAT: Pregunta general (no orientada a SQL)
+SELECT DBMS_CLOUD_AI.GENERATE(
+         prompt       => 'Explica en 6 a 8 líneas qué es Oracle Autonomous Database y cuáles son tres beneficios principales.',
+         profile_name => 'genai',
+         action       => 'chat'
+       ) AS resp
+FROM (SELECT 1 AS x);
+
 ```
 
 ```sql
 SELECT DBMS_CLOUD_AI.GENERATE(
-  prompt => 'Lista las 5 vacantes más próximas a cerrar con nombre de empresa y ciudad.',
-  action => 'runsql'
+  prompt       => 'Lista las 5 vacantes más próximas a cerrar con nombre de empresa y ciudad.',
+  profile_name => 'genai',
+  action       => 'narrate'
 ) AS resp
-FROM dual;
+FROM (SELECT 1);
 ```
 
 ---
