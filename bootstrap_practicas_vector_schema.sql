@@ -1,5 +1,5 @@
 -- ============================================================
--- BOOTSTRAP COFORMACION + TRIGGERS de embeddings)
+-- COFORMACION: Tablas + Triggers + Datos ricos (VARCHAR2(4000))
 -- Requisito: modelo 'minilm_l12_v2' cargado en USER_MINING_MODELS
 -- ============================================================
 
@@ -20,7 +20,6 @@ BEGIN EXECUTE IMMEDIATE 'DROP TABLE empresa PURGE'; EXCEPTION WHEN OTHERS THEN N
 /
 
 -- 1) Tablas
-
 CREATE TABLE empresa (
   nit_empresa     VARCHAR2(20) PRIMARY KEY,
   nombre_empresa  VARCHAR2(200) NOT NULL,
@@ -34,7 +33,7 @@ CREATE TABLE vacantes_empresas (
   nit_empresa            VARCHAR2(20) NOT NULL,
   fecha_apertura_vacante DATE NOT NULL,
   fecha_cierre_vacante   DATE,
-  descripcion_perfil     VARCHAR2(400) NOT NULL,
+  descripcion_perfil     VARCHAR2(4000) NOT NULL,
   perfil_vec             VECTOR,
   CONSTRAINT fk_vac_empresa
     FOREIGN KEY (nit_empresa) REFERENCES empresa(nit_empresa)
@@ -51,7 +50,7 @@ CREATE TABLE estudiante (
     estado_practica IN ('EN ENTREVISTAS','NO CUMPLE CRITERIOS ACADEMICOS','ACEPTADO POR EMPRESA')
   ),
   estado_academico     VARCHAR2(10) NOT NULL CHECK (estado_academico IN ('ACTIVO','INACTIVO')),
-  perfil_profesional   VARCHAR2(400) NOT NULL,
+  perfil_profesional   VARCHAR2(4000) NOT NULL,
   perfil_vec           VECTOR,
   CONSTRAINT uq_est_doc UNIQUE (tipodoc, numerodoc)
 );
@@ -67,27 +66,24 @@ CREATE TABLE estudiante_vacante (
   CONSTRAINT uq_ev UNIQUE (id_estudiante, id_vacante)
 );
 
--- 2) Triggers (ahora sí se permite UPDATE OF porque NO es CLOB)
-
+-- 2) Triggers: embeddings automáticos
 CREATE OR REPLACE TRIGGER trg_estudiante_vec
 BEFORE INSERT OR UPDATE OF perfil_profesional
 ON estudiante
 FOR EACH ROW
 BEGIN
-  -- Genera embedding cuando se inserta o cambia el perfil
   SELECT VECTOR_EMBEDDING(minilm_l12_v2 USING :NEW.perfil_profesional AS data)
     INTO :NEW.perfil_vec
     FROM dual;
-
 EXCEPTION
   WHEN OTHERS THEN
     RAISE_APPLICATION_ERROR(
       -20001,
-      'Error generando embedding en TRG_ESTUDIANTE_VEC. Verifica modelo MINILM_L12_V2. Detalle: ' || SQLERRM
+      'Error embedding estudiante (TRG_ESTUDIANTE_VEC). Verifica modelo MINILM_L12_V2. Detalle: '||SQLERRM
     );
 END;
 /
--- (Si tu herramienta no soporta SHOW ERRORS, ignóralo)
+-- Nota: si tu herramienta no soporta SHOW ERRORS, ignóralo.
 SHOW ERRORS
 /
 
@@ -99,71 +95,203 @@ BEGIN
   SELECT VECTOR_EMBEDDING(minilm_l12_v2 USING :NEW.descripcion_perfil AS data)
     INTO :NEW.perfil_vec
     FROM dual;
-
 EXCEPTION
   WHEN OTHERS THEN
     RAISE_APPLICATION_ERROR(
       -20002,
-      'Error generando embedding en TRG_VACANTE_VEC. Verifica modelo MINILM_L12_V2. Detalle: ' || SQLERRM
+      'Error embedding vacante (TRG_VACANTE_VEC). Verifica modelo MINILM_L12_V2. Detalle: '||SQLERRM
     );
 END;
 /
 SHOW ERRORS
 /
 
--- 3) Datos base (los triggers llenan perfil_vec automáticamente)
-
--- 3.1 Empresas
+-- 3) Datos base
+-- 3.1 Empresas (5)
 INSERT INTO empresa VALUES ('900100100-1','DataNova SAS','Tecnología','Bogotá','talento@datanova.co');
 INSERT INTO empresa VALUES ('900200200-2','Fintech Andina','Finanzas','Medellín','hr@fintechandina.com');
 INSERT INTO empresa VALUES ('900300300-3','SecureLab LTDA','Ciberseguridad','Cali','jobs@securelab.io');
 INSERT INTO empresa VALUES ('900400400-4','CloudWare','Software','Barranquilla','reclutamiento@cloudware.dev');
 INSERT INTO empresa VALUES ('900500500-5','Retail Insights','Retail','Bogotá','seleccion@retailinsights.com');
 
--- 3.2 Vacantes (10) - OJO: máx 400 chars por registro
+-- 3.2 Vacantes (10) - descripciones ricas
 INSERT INTO vacantes_empresas (nit_empresa,fecha_apertura_vacante,fecha_cierre_vacante,descripcion_perfil) VALUES
-('900100100-1', DATE '2026-02-01', DATE '2026-03-15', 'Data Analyst: SQL, Power BI, ETL básico, dashboards, comunicación.');
-INSERT INTO vacantes_empresas VALUES
-(DEFAULT,'900100100-1', DATE '2026-02-10', DATE '2026-03-20', 'Data Engineer: pipelines, modelado, Spark básico, Python, Git.', NULL);
-INSERT INTO vacantes_empresas VALUES
-(DEFAULT,'900200200-2', DATE '2026-02-05', DATE '2026-03-05', 'Backend Java: Spring Boot, APIs REST, pruebas, PostgreSQL, seguridad básica.', NULL);
-INSERT INTO vacantes_empresas VALUES
-(DEFAULT,'900200200-2', DATE '2026-02-08', DATE '2026-03-18', 'BI: Power BI, DAX, SQL, levantamiento de requerimientos.', NULL);
-INSERT INTO vacantes_empresas VALUES
-(DEFAULT,'900300300-3', DATE '2026-02-03', DATE '2026-03-25', 'Ciberseguridad: Linux, OWASP, redes, SIEM básico, reportes.', NULL);
-INSERT INTO vacantes_empresas VALUES
-(DEFAULT,'900300300-3', DATE '2026-02-12', DATE '2026-03-30', 'Pentesting web junior: Burp Suite, vulnerabilidades web, documentación.', NULL);
-INSERT INTO vacantes_empresas VALUES
-(DEFAULT,'900400400-4', DATE '2026-02-01', DATE '2026-03-10', 'DevOps junior: Docker, CI/CD, Kubernetes básico, monitoreo, scripting.', NULL);
-INSERT INTO vacantes_empresas VALUES
-(DEFAULT,'900400400-4', DATE '2026-02-15', DATE '2026-04-01', 'Frontend React: TypeScript, UI/UX, consumo de APIs, pruebas.', NULL);
-INSERT INTO vacantes_empresas VALUES
-(DEFAULT,'900500500-5', DATE '2026-02-04', DATE '2026-03-22', 'Ciencia de datos: estadística, Python, pandas, ML básico, visualización, SQL.', NULL);
-INSERT INTO vacantes_empresas VALUES
-(DEFAULT,'900500500-5', DATE '2026-02-06', DATE '2026-03-28', 'Product/UX: investigación, Figma, prototipos, métricas, priorización.', NULL);
+('900100100-1', DATE '2026-02-01', DATE '2026-03-15',
+'Rol: Analista de datos en entorno corporativo. Se requiere capacidad para traducir preguntas de negocio a consultas SQL, diseñar indicadores y construir tableros ejecutivos. 
+Se valoran habilidades de comunicación para explicar hallazgos, validar supuestos y proponer acciones basadas en evidencia. Experiencia con limpieza de datos, calidad y documentación.');
 
--- 3.3 Estudiantes (20) - OJO: máx 400 chars por registro
+INSERT INTO vacantes_empresas VALUES
+(DEFAULT,'900100100-1', DATE '2026-02-10', DATE '2026-03-20',
+'Rol: Ingeniería de datos junior. Apoyo en preparación de datasets, estandarización de fuentes y construcción de pipelines reproducibles.
+Se espera comprensión de modelado relacional/dimensional, buenas prácticas de versionamiento (Git) y automatización de tareas. Se valoran nociones de procesamiento por lotes, orquestación y manejo de datos en almacenamiento de objetos.',
+NULL);
+
+INSERT INTO vacantes_empresas VALUES
+(DEFAULT,'900200200-2', DATE '2026-02-05', DATE '2026-03-05',
+'Rol: Backend Java en servicios financieros. Participa en desarrollo de APIs, validación de reglas de negocio y mejoras de rendimiento.
+Se busca enfoque en calidad: pruebas, trazabilidad, manejo de errores y principios de diseño. Importante: seguridad básica (autenticación/autorización) y manejo de datos transaccionales.',
+NULL);
+
+INSERT INTO vacantes_empresas VALUES
+(DEFAULT,'900200200-2', DATE '2026-02-08', DATE '2026-03-18',
+'Rol: BI/Analytics. Recopilar requerimientos, construir métricas, definir dimensiones y preparar reportes para diferentes audiencias.
+Se valora pensamiento analítico, storytelling con datos y capacidad para validar consistencia de indicadores. Familiaridad con esquemas relacionales y elaboración de reportes iterativos con usuarios.',
+NULL);
+
+INSERT INTO vacantes_empresas VALUES
+(DEFAULT,'900300300-3', DATE '2026-02-03', DATE '2026-03-25',
+'Rol: Seguridad defensiva. Apoyo en revisión de configuraciones, identificación de riesgos, elaboración de recomendaciones y procedimientos.
+Se espera manejo básico de sistemas tipo Unix, conceptos de red y capacidad para redactar reportes técnicos. Se valora conocimiento de buenas prácticas de hardening y análisis de eventos.',
+NULL);
+
+INSERT INTO vacantes_empresas VALUES
+(DEFAULT,'900300300-3', DATE '2026-02-12', DATE '2026-03-30',
+'Rol: Evaluación de seguridad ofensiva en aplicaciones web. Apoyo en pruebas controladas, evidencia de vulnerabilidades y redacción de informes de hallazgos.
+Se valora criterio ético, capacidad de reproducir escenarios, priorizar riesgos y comunicar impacto. Importante: documentación clara y estructurada.',
+NULL);
+
+INSERT INTO vacantes_empresas VALUES
+(DEFAULT,'900400400-4', DATE '2026-02-01', DATE '2026-03-10',
+'Rol: Operaciones/Plataforma (DevOps). Automatizar entregas a producción, estandarizar despliegues y asegurar estabilidad operativa.
+Se requiere mentalidad de confiabilidad: monitoreo, alertas, trazabilidad y resolución de incidentes. Se valora conocimiento de contenedores, pipelines, prácticas de infraestructura como código y observabilidad.',
+NULL);
+
+INSERT INTO vacantes_empresas VALUES
+(DEFAULT,'900400400-4', DATE '2026-02-15', DATE '2026-04-01',
+'Rol: Frontend. Construir interfaces accesibles y consistentes, integrando servicios mediante APIs.
+Se valora experiencia con componentes reutilizables, pruebas en UI, criterios de usabilidad y colaboración con diseño. Importante: manejo de estados, validaciones y buenas prácticas de mantenibilidad.',
+NULL);
+
+INSERT INTO vacantes_empresas VALUES
+(DEFAULT,'900500500-5', DATE '2026-02-04', DATE '2026-03-22',
+'Rol: Ciencia de datos junior. Preparar datos, diseñar experimentos simples y entrenar modelos básicos con validación adecuada.
+Se requiere razonamiento estadístico, capacidad para explicar resultados y detectar sesgos. Se valora habilidad para transformar necesidades de negocio en variables y métricas observables.',
+NULL);
+
+INSERT INTO vacantes_empresas VALUES
+(DEFAULT,'900500500-5', DATE '2026-02-06', DATE '2026-03-28',
+'Rol: Producto/UX. Apoyar investigación con usuarios, prototipado y validación de hipótesis.
+Se valora capacidad de sintetizar feedback, definir criterios de aceptación, priorizar mejoras y medir impacto con métricas. Importante: comunicación con stakeholders y documentación.',
+NULL);
+
+-- 3.3 Estudiantes (20) - perfiles ricamente redactados
 INSERT INTO estudiante (tipodoc,numerodoc,nombre,apellidos,telefono,estado_practica,estado_academico,perfil_profesional) VALUES
-('CC','10000001','Laura','Gómez Ruiz','3001110001','EN ENTREVISTAS','ACTIVO','Python, SQL, ETL, Power BI, analítica de datos.');
-INSERT INTO estudiante VALUES (DEFAULT,'TI','20000002','Mateo','Hernández Pico','3001110002','EN ENTREVISTAS','ACTIVO','Java, Spring Boot, APIs REST, PostgreSQL, pruebas unitarias.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000003','Sofía','Martínez Díaz','3001110003','ACEPTADO POR EMPRESA','ACTIVO','Ciberseguridad: Linux, redes, OWASP, SIEM básico, Bash.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000004','Juan','Rojas Castillo','3001110004','NO CUMPLE CRITERIOS ACADEMICOS','INACTIVO','Soporte TI: mesa de ayuda, Windows, Office, atención al usuario.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'TI','20000005','Valentina','Torres Núñez','3001110005','EN ENTREVISTAS','ACTIVO','NLP, embeddings, RAG, Python, bases de datos.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000006','Daniel','Sánchez Vera','3001110006','EN ENTREVISTAS','ACTIVO','Frontend: React, TypeScript, UI/UX, consumo de APIs.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000007','Camila','Navarro Gil','3001110007','ACEPTADO POR EMPRESA','ACTIVO','Data engineering: pipelines, modelado dimensional, SQL, Spark básico.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'TI','20000008','Andrés','Moreno León','3001110008','EN ENTREVISTAS','ACTIVO','DevOps: Docker, CI/CD, Kubernetes básico, observabilidad.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000009','Mariana','Prieto Solano','3001110009','EN ENTREVISTAS','ACTIVO','QA: pruebas funcionales, Selenium, documentación.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000010','Sebastián','Londoño Vélez','3001110010','EN ENTREVISTAS','ACTIVO','Node.js, Express, MongoDB, PostgreSQL, JWT.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'TI','20000011','Isabella','Cárdenas Ochoa','3001110011','ACEPTADO POR EMPRESA','ACTIVO','BI: Power BI, DAX, SQL, requerimientos, storytelling.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000012','Nicolás','Pérez Salazar','3001110012','EN ENTREVISTAS','ACTIVO','Machine learning: scikit-learn, clasificación, validación.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000013','Gabriela','Acosta Ríos','3001110013','EN ENTREVISTAS','ACTIVO','Nube y datos: OCI/AWS básico, object storage, orquestación.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'TI','20000014','Samuel','Quintero Pardo','3001110014','EN ENTREVISTAS','ACTIVO','PL/SQL, modelado relacional, índices, tuning básico.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000015','Luciana','Vargas Peña','3001110015','EN ENTREVISTAS','ACTIVO','Full stack: React + Java, microservicios, pruebas.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000016','Emiliano','Beltrán Hoyos','3001110016','NO CUMPLE CRITERIOS ACADEMICOS','ACTIVO','Infraestructura: redes, inventarios, mantenimiento.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'TI','20000017','Sara','Mendoza Rangel','3001110017','EN ENTREVISTAS','ACTIVO','Estadística, Python, pandas, visualización, SQL.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000018','Tomás','Ariza Camacho','3001110018','EN ENTREVISTAS','ACTIVO','Pentesting web: Burp Suite, reporte, ética profesional.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'CC','10000019','Paula','Ortega Fajardo','3001110019','ACEPTADO POR EMPRESA','ACTIVO','Product/UX: investigación, Figma, prototipos, métricas.', NULL);
-INSERT INTO estudiante VALUES (DEFAULT,'TI','20000020','David','Ramírez Cuéllar','3001110020','EN ENTREVISTAS','ACTIVO','Ingeniería de software: clean code, Java/Python, APIs, SQL.', NULL);
+('CC','10000001','Laura','Gómez Ruiz','3001110001','EN ENTREVISTAS','ACTIVO',
+'Me interesa convertir datos en decisiones. He trabajado en consultas SQL para explorar información, detectar inconsistencias y proponer indicadores. 
+Me siento cómoda explicando hallazgos a personas no técnicas y documentando supuestos. Tengo experiencia académica con ETL básico, visualización y construcción de tableros con enfoque narrativo.');
+
+INSERT INTO estudiante (tipodoc,numerodoc,nombre,apellidos,telefono,estado_practica,estado_academico,perfil_profesional) VALUES
+('TI','20000002','Mateo','Hernández Pico','3001110002','EN ENTREVISTAS','ACTIVO',
+'Desarrollo backend con enfoque en calidad. He implementado APIs en Java y organizado lógica de negocio para que sea testeable y mantenible.
+Me interesa trabajar en sistemas transaccionales, manejo de errores, seguridad básica y buenas prácticas como documentación y pruebas automatizadas.');
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000003','Sofía','Martínez Díaz','3001110003','ACEPTADO POR EMPRESA','ACTIVO',
+'Me enfoco en seguridad aplicada: comprender superficie de ataque, revisar configuraciones y reportar riesgos de forma clara.
+Tengo base en sistemas tipo Linux, redes y buenas prácticas. Me interesa fortalecer habilidades en análisis de eventos, control de accesos y recomendaciones de hardening.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000004','Juan','Rojas Castillo','3001110004','NO CUMPLE CRITERIOS ACADEMICOS','INACTIVO',
+'He participado en soporte a usuarios: diagnóstico, atención y documentación. Me interesa mejorar habilidades técnicas y de comunicación.
+Conozco herramientas ofimáticas, entorno Windows y conceptos de mesa de ayuda. Busco estructurar procesos y buenas prácticas de soporte.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'TI','20000005','Valentina','Torres Núñez','3001110005','EN ENTREVISTAS','ACTIVO',
+'Me interesa IA aplicada a texto. He trabajado en proyectos académicos donde se requiere transformar descripciones en representaciones numéricas para búsqueda o clasificación.
+Puedo estructurar prompts, preparar datos, evaluar resultados y documentar criterios. Me motiva integrar bases de datos con modelos para resolver preguntas de negocio.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000006','Daniel','Sánchez Vera','3001110006','EN ENTREVISTAS','ACTIVO',
+'Trabajo en interfaces centradas en el usuario. Me interesa construir componentes reutilizables y asegurar consistencia visual.
+He implementado formularios con validación, consumo de APIs y manejo de estados. Me importa la accesibilidad, la usabilidad y las pruebas para evitar regresiones.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000007','Camila','Navarro Gil','3001110007','ACEPTADO POR EMPRESA','ACTIVO',
+'Me orienté a ingeniería de datos: preparar fuentes, diseñar esquemas y construir flujos reproducibles. Me interesa el modelado dimensional para analítica.
+He trabajado con SQL avanzado, limpieza de datos y automatización de cargas. Busco fortalecer orquestación, trazabilidad y calidad de datos en producción.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'TI','20000008','Andrés','Moreno León','3001110008','EN ENTREVISTAS','ACTIVO',
+'Me interesa la confiabilidad operativa. He automatizado despliegues en entornos académicos, estandarizado procesos y documentado procedimientos para reducir errores.
+Trabajo con contenedores, pipelines y monitoreo para detectar problemas temprano. Me motiva mejorar observabilidad, alertas y trazabilidad, y adoptar prácticas de infraestructura como código.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000009','Mariana','Prieto Solano','3001110009','EN ENTREVISTAS','ACTIVO',
+'Me enfoco en aseguramiento de calidad. Defino casos de prueba, reporto hallazgos y mantengo evidencias para trazabilidad.
+He practicado automatización básica y documentación clara para equipos técnicos y no técnicos. Me interesa fortalecer pruebas de regresión y criterios de aceptación.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000010','Sebastián','Londoño Vélez','3001110010','EN ENTREVISTAS','ACTIVO',
+'Desarrollo servicios web y APIs con enfoque práctico. Me interesa diseñar endpoints claros, autenticación y validación de datos.
+He trabajado con bases de datos relacionales y NoSQL, y me importa escribir código mantenible y documentado. Busco profundizar en arquitectura y seguridad.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'TI','20000011','Isabella','Cárdenas Ochoa','3001110011','ACEPTADO POR EMPRESA','ACTIVO',
+'Me apasiona BI y analítica. Me gusta tomar requerimientos, convertirlos en indicadores y construir reportes para usuarios finales.
+Me interesa la consistencia de métricas, el storytelling y la validación con negocio. Trabajo con SQL, diseño de KPIs y documentación de definiciones.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000012','Nicolás','Pérez Salazar','3001110012','EN ENTREVISTAS','ACTIVO',
+'Me enfoco en aprendizaje automático básico: preparar datos, seleccionar variables y evaluar modelos de clasificación/regresión.
+Me interesa explicar resultados, evitar sobreajuste y documentar decisiones. Busco aplicar estadística y validación en problemas con datos reales.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000013','Gabriela','Acosta Ríos','3001110013','EN ENTREVISTAS','ACTIVO',
+'Me interesa trabajar con datos en nube. He usado almacenamiento de objetos y organizado datasets para consumo analítico.
+Me gusta automatizar tareas, mantener estructura y documentar procesos. Busco mejorar habilidades en orquestación de flujos, gobernanza y seguridad de datos.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'TI','20000014','Samuel','Quintero Pardo','3001110014','EN ENTREVISTAS','ACTIVO',
+'Me orienté a bases de datos: modelado relacional, PL/SQL y consultas optimizadas. Me interesa entender planes de ejecución y rendimiento.
+He trabajado con integridad referencial, índices y documentación de esquemas. Busco aplicar buenas prácticas de diseño y mantenimiento.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000015','Luciana','Vargas Peña','3001110015','EN ENTREVISTAS','ACTIVO',
+'Me gusta construir soluciones de extremo a extremo: desde UI hasta servicios. Me interesa colaborar con equipos y mantener calidad del código.
+He trabajado con patrones, pruebas y documentación. Busco fortalecer integración continua, arquitectura y despliegue confiable.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000016','Emiliano','Beltrán Hoyos','3001110016','NO CUMPLE CRITERIOS ACADEMICOS','ACTIVO',
+'Me he desempeñado en tareas de infraestructura: soporte de redes, inventarios y mantenimiento. Me interesa profesionalizar procesos operativos.
+Quiero fortalecer automatización, estandarización y documentación. Busco aprender más sobre plataformas y prácticas modernas de operación.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'TI','20000017','Sara','Mendoza Rangel','3001110017','EN ENTREVISTAS','ACTIVO',
+'Me interesa la ciencia de datos desde el enfoque estadístico. Disfruto explorar datos, limpiar inconsistencias y construir visualizaciones claras.
+He trabajado con Python/pandas y SQL en proyectos académicos. Busco aplicar razonamiento estadístico y métricas en casos de negocio.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000018','Tomás','Ariza Camacho','3001110018','EN ENTREVISTAS','ACTIVO',
+'Me interesa evaluar la seguridad de aplicaciones web de forma ética y controlada. Puedo documentar hallazgos, reproducir evidencias y proponer mitigaciones.
+Me motiva aprender metodologías de reporte, priorización de riesgos y comunicación con equipos de desarrollo.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'CC','10000019','Paula','Ortega Fajardo','3001110019','ACEPTADO POR EMPRESA','ACTIVO',
+'Me enfoco en experiencia de usuario y producto. He realizado entrevistas, sintetizado hallazgos y construido prototipos para validar hipótesis.
+Me interesa priorización, métricas y definición de criterios de aceptación. Busco colaborar con equipos técnicos y de negocio.',
+NULL);
+
+INSERT INTO estudiante VALUES
+(DEFAULT,'TI','20000020','David','Ramírez Cuéllar','3001110020','EN ENTREVISTAS','ACTIVO',
+'Me interesa ingeniería de software con buenas prácticas. He trabajado con Java y Python, APIs y modelado básico.
+Me enfoco en clean code, documentación y pruebas. Busco fortalecer diseño, arquitectura y trabajo colaborativo con control de versiones.',
+NULL);
 
 -- 3.4 Asociaciones ejemplo (10)
 INSERT INTO estudiante_vacante (id_estudiante, id_vacante) VALUES (1, 1);
@@ -179,7 +307,7 @@ INSERT INTO estudiante_vacante (id_estudiante, id_vacante) VALUES (19,10);
 
 COMMIT;
 
--- 4) View para APEX (vacante -> ranking estudiantes)
+-- 4) VIEW para APEX: ranking vacante → estudiantes
 CREATE OR REPLACE VIEW v_match_vacante_estudiante AS
 SELECT
   v.id_vacante,
@@ -189,7 +317,8 @@ SELECT
   e.apellidos,
   e.estado_academico,
   e.estado_practica,
-  VECTOR_DISTANCE(e.perfil_vec, v.perfil_vec, COSINE) AS distancia
+  VECTOR_DISTANCE(e.perfil_vec, v.perfil_vec, COSINE) AS cosine_distance,
+  (1 - VECTOR_DISTANCE(e.perfil_vec, v.perfil_vec, COSINE)) AS cosine_similarity
 FROM vacantes_empresas v
 JOIN estudiante e
   ON e.estado_academico = 'ACTIVO'
@@ -197,15 +326,13 @@ JOIN estudiante e
 WHERE v.perfil_vec IS NOT NULL
   AND e.perfil_vec IS NOT NULL;
 
--- 5) Verificación mínima
-SELECT COUNT(*) AS empresas FROM empresa;
-SELECT COUNT(*) AS vacantes FROM vacantes_empresas;
-SELECT COUNT(*) AS estudiantes FROM estudiante;
+-- 5) Verificación rápida
+SELECT COUNT(*) empresas FROM empresa;
+SELECT COUNT(*) vacantes FROM vacantes_empresas;
+SELECT COUNT(*) estudiantes FROM estudiante;
 
-SELECT COUNT(*) AS estudiantes_total,
-       SUM(CASE WHEN perfil_vec IS NOT NULL THEN 1 ELSE 0 END) AS estudiantes_con_vector
+SELECT COUNT(*) total, SUM(CASE WHEN perfil_vec IS NOT NULL THEN 1 ELSE 0 END) con_vec
 FROM estudiante;
 
-SELECT COUNT(*) AS vacantes_total,
-       SUM(CASE WHEN perfil_vec IS NOT NULL THEN 1 ELSE 0 END) AS vacantes_con_vector
+SELECT COUNT(*) total, SUM(CASE WHEN perfil_vec IS NOT NULL THEN 1 ELSE 0 END) con_vec
 FROM vacantes_empresas;
