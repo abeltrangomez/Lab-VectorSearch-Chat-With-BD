@@ -225,6 +225,7 @@ FETCH EXACT FIRST 5 ROWS ONLY;
 ### B) Matching automático: una vacante → ranking de estudiantes
 ```sql
 
+
 VAR vacante_id NUMBER;
 EXEC :vacante_id := 7;
 
