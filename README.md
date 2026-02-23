@@ -167,6 +167,13 @@ begin
 end;
 /
 
+BEGIN
+  DBMS_VECTOR.LOAD_ONNX_MODEL('DATA_PUMP_DIR','all_MiniLM_L12_v2.onnx','minilm_l12_v2',
+  JSON('{"function" : "embedding", "embeddingOutput" : "embedding", "input": {"input": ["DATA"]}}'));
+END;
+
+
+
 ```
 
 Verificación:
