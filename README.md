@@ -136,6 +136,47 @@ SELECT USER FROM dual;
 SELECT directory_name FROM all_directories WHERE directory_name='DATA_PUMP_DIR';
 ```
 
+
+
+## 3.3 Modelo ONNX + embeddings
+
+### A) Importar y cargar modelo ONNX (texto)
+Conectado como `COFORMACION`:
+
+```sql
+begin
+  dbms_cloud.get_object(
+    object_uri=>'https://c4u04.objectstorage.us-ashburn-1.oci.customer-oci.com/p/EcTjWk2IuZPZeNnD_fYMcgUhdNDIDA6rt9gaFj_WZMiL7VvxPBNMY60837hu5hga/n/c4u04/b/livelabsfiles/o/labfiles/clip-vit-base-patch32_txt.onnx',
+    directory_name=>'DATA_PUMP_DIR',
+    file_name=>'clip-vit-base-patch32_txt.onnx'
+  );
+end;
+/
+begin
+  dbms_vector.load_onnx_model(directory=>'DATA_PUMP_DIR', 
+    file_name=>'clip-vit-base-patch32_txt.onnx', model_name=>'clip_vit_txt',
+    metadata=>JSON('{"function" : "embedding", "embeddingOutput" : "embedding" , "input": {"input": ["DATA"]}}'));
+end;
+/
+begin
+  dbms_cloud.get_object(
+    object_uri=>'https://c4u04.objectstorage.us-ashburn-1.oci.customer-oci.com/p/EcTjWk2IuZPZeNnD_fYMcgUhdNDIDA6rt9gaFj_WZMiL7VvxPBNMY60837hu5hga/n/c4u04/b/livelabsfiles/o/labfiles/all_MiniLM_L12_v2.onnx',
+    directory_name=>'DATA_PUMP_DIR',
+    file_name=>'all_MiniLM_L12_v2.onnx'
+  );
+end;
+/
+
+```
+
+Verificación:
+
+```sql
+SELECT model_name, mining_function, algorithm, algorithm_type, model_size
+FROM user_mining_models
+ORDER BY model_name;
+```
+
 ---
 
 ## 3.3 Bootstrap: tablas, columnas VECTOR y datos
@@ -152,40 +193,7 @@ Resultados esperados:
 
 ---
 
-## 3.4 Modelo ONNX + embeddings
-
-### A) Importar y cargar modelo ONNX (texto)
-Conectado como `COFORMACION`:
-
-```sql
-BEGIN
-  DBMS_CLOUD.GET_OBJECT(
-    object_uri     => 'https://c4u04.objectstorage.us-ashburn-1.oci.customer-oci.com/p/EcTjWk2IuZPZeNnD_fYMcgUhdNDIDA6rt9gaFj_WZMiL7VvxPBNMY60837hu5hga/n/c4u04/b/livelabsfiles/o/labfiles/all_MiniLM_L12_v2.onnx',
-    directory_name => 'DATA_PUMP_DIR',
-    file_name      => 'all_MiniLM_L12_v2.onnx'
-  );
-END;
-/
-BEGIN
-  DBMS_VECTOR.LOAD_ONNX_MODEL(
-    directory  => 'DATA_PUMP_DIR',
-    file_name  => 'all_MiniLM_L12_v2.onnx',
-    model_name => 'minilm_l12_v2',
-    metadata   => JSON('{"function":"embedding","embeddingOutput":"embedding","input":{"input":["DATA"]}}')
-  );
-END;
-/
-```
-
-Verificación:
-
-```sql
-SELECT model_name, mining_function, algorithm, algorithm_type, model_size
-FROM user_mining_models
-ORDER BY model_name;
-```
-
-### B) Generar embeddings para estudiantes y vacantes
+### Generar embeddings para estudiantes y vacantes
 ```sql
 UPDATE estudiante
 SET perfil_vec = VECTOR_EMBEDDING(minilm_l12_v2 USING perfil_profesional AS data);
