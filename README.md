@@ -383,31 +383,4 @@ FROM (SELECT 1);
 
 ---
 
-# Anexos
 
-## A) Checklist de verificación
-
-```sql
-SELECT COUNT(*) AS empresas FROM empresa;
-SELECT COUNT(*) AS vacantes FROM vacantes_empresas;
-SELECT COUNT(*) AS estudiantes FROM estudiante;
-SELECT COUNT(*) AS asociaciones FROM estudiante_vacante;
-```
-
-```sql
-SELECT model_name FROM user_mining_models ORDER BY 1;
-```
-
-```sql
-SELECT COUNT(*) total, SUM(CASE WHEN perfil_vec IS NOT NULL THEN 1 ELSE 0 END) con_vector
-FROM estudiante;
-
-SELECT COUNT(*) total, SUM(CASE WHEN perfil_vec IS NOT NULL THEN 1 ELSE 0 END) con_vector
-FROM vacantes_empresas;
-```
-
-## B) Solución de problemas
-
-- **Permisos ONNX (GET_OBJECT):** verifica `DBMS_CLOUD` y `DATA_PUMP_DIR`.
-- **Permisos LOAD_ONNX_MODEL:** concede `EXECUTE ON DBMS_VECTOR`.
-- **Modelo no visible:** revisar `USER_MINING_MODELS`.
