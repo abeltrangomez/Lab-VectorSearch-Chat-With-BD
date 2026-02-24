@@ -383,4 +383,8 @@ FROM (SELECT 1);
 
 ---
 
+## 5. Creacion de Stack para ejecucion archivos de IaC main.tf
+
+
+<img width="1567" height="673" alt="image" src="https://github.com/user-attachments/assets/0e93e04c-d6ff-43d9-aa29-baeed4e40dfe" />
 
