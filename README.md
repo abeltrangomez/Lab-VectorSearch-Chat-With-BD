@@ -127,8 +127,6 @@ GRANT SELECT ON SYS.V_$VECTOR_INDEX TO COFORMACION;
 
 GRANT EXECUTE ON DBMS_VECTOR TO COFORMACION;
 
-GRANT EXECUTE ON C##CLOUD$SERVICE.DBMS_CLOUD_AI TO COFORMACION;
-
 
 ```
 
@@ -292,9 +290,40 @@ Al finalizar, el estudiante podrá:
 - Generar SQL (`showsql`) y ejecutar SQL (`runsql`) desde prompts.
 - Obtener explicaciones (`explainsql`) y narrativas (`narrate`).
 
-## 4.2 Integración del proveedor GenAI
+## 4.2 Habilitación de Select AI y Resource Principal para el esquema
+
+En esta sección se habilita el acceso del esquema de trabajo a las capacidades de IA de la base de datos. El objetivo es que el usuario `COFORMACION` pueda ejecutar funcionalidades de Select AI desde SQL y autenticarse mediante **Resource Principal** para consumir servicios de IA integrados.
+
+### Objetivo técnico
+
+- Conceder permiso de ejecución sobre el paquete `DBMS_CLOUD_AI`.
+- Habilitar **Resource Principal** para el esquema.
+- Dejar el esquema listo para crear y usar perfiles de IA en los pasos siguientes.
+
+---
+
+### Como usuarioi CConceder privilegio de ejecución sobre `DBMS_CLOUD_AI` Este privilegio permite que el esquema pueda invocar procedimientos de Select AI.
+
+En **SQL Worksheet**, conectado como `ADMIN`, ejecutar:
+
+```sql
+GRANT EXECUTE ON C##CLOUD$SERVICE.DBMS_CLOUD_AI TO COFORMACION;
+/
+
+BEGIN
+  DBMS_CLOUD_ADMIN.ENABLE_RESOURCE_PRINCIPAL(
+    username => 'COFORMACION'
+  );
+END;
+/
+```
+
+## 4.3 Integración del proveedor GenAI
+
+Conectado como `COFORMACION`:
 
 ### A) Añadir metadatos (comentarios)
+
 ```sql
 COMMENT ON TABLE estudiante IS 'Estudiantes del programa de co-formación. Incluye perfil profesional y estados.';
 COMMENT ON TABLE vacantes_empresas IS 'Vacantes por empresa. Incluye perfil requerido y embeddings.';
@@ -328,13 +357,6 @@ END;
 
 BEGIN
   DBMS_CLOUD_AI.SET_PROFILE('genai');
-END;
-/
-
-BEGIN
-  DBMS_CLOUD_ADMIN.ENABLE_RESOURCE_PRINCIPAL(
-    username => 'COFORMACION'
-  );
 END;
 /
 ```
