@@ -406,18 +406,6 @@ FROM (SELECT 1);
 
 ---
 
-## 5. Creacion de Stack para ejecucion archivos de IaC main.tf
-
-<img width="621" height="532" alt="image" src="https://github.com/user-attachments/assets/d09b15ed-3fc7-4be9-ad28-febe097de1e2" />
-
-
-<img width="1567" height="673" alt="image" src="https://github.com/user-attachments/assets/0e93e04c-d6ff-43d9-aa29-baeed4e40dfe" />
-<img width="480" height="268" alt="image" src="https://github.com/user-attachments/assets/ff0e679a-85d2-4672-b216-09ec247bce77" />
-<img width="1133" height="576" alt="image" src="https://github.com/user-attachments/assets/db947880-3e35-451e-949d-8d3a01952198" />
-<img width="1052" height="261" alt="image" src="https://github.com/user-attachments/assets/733cb734-67c0-40f1-b52a-07196abb271c" />
-<img width="970" height="241" alt="image" src="https://github.com/user-attachments/assets/6f6829e0-cdd6-4db5-9d65-290df73e3752" />
-<img width="1225" height="593" alt="image" src="https://github.com/user-attachments/assets/51dd937c-4ccf-4bdd-9cb7-55d7d87dfc2c" />
-
 
 
 
