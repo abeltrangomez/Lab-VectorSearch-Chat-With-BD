@@ -330,6 +330,11 @@ BEGIN
   );
 END;
 /
+
+BEGIN
+  DBMS_CLOUD_AI.SET_PROFILE('genai');
+END;
+/
 ```
 
 ---
