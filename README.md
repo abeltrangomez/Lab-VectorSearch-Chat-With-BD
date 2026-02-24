@@ -72,7 +72,7 @@ Al finalizar, el estudiante podrá:
 
 ## 3.2 Preparación: usuario y permisos (COFORMACION)
 
-### Debe ya tener creada la ADB version 26.ai en la region correcta
+### Debe crear la Base de Datos: version 26.ai , sa-saopaulo-1, Always Free, y en un OCI Compartment
 
 ### A) Crear usuario desde Database Actions (UI)
 En **Database Actions → Administration → Database Users → Create User**:
