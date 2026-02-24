@@ -292,17 +292,11 @@ Al finalizar, el estudiante podrá:
 
 ## 4.2 Habilitación de Select AI y Resource Principal para el esquema
 
-En esta sección se habilita el acceso del esquema de trabajo a las capacidades de IA de la base de datos. El objetivo es que el usuario `COFORMACION` pueda ejecutar funcionalidades de Select AI desde SQL y autenticarse mediante **Resource Principal** para consumir servicios de IA integrados.
+En esta sección se habilita el acceso del esquema de trabajo a las capacidades de IA de la base de datos. El objetivo es que el usuario `COFORMACION` pueda ejecutar funcionalidades de Select AI desde SQL y autenticarse mediante **Resource Principal** para consumir servicios de IA integrados, los objetivos son:
 
-### Objetivo técnico
-
-- Conceder permiso de ejecución sobre el paquete `DBMS_CLOUD_AI`.
-- Habilitar **Resource Principal** para el esquema.
+- Conceder permiso de ejecución sobre el paquete `DBMS_CLOUD_AI`.Este privilegio permite que el esquema pueda invocar procedimientos de Select AI.
+ - Habilitar **Resource Principal** para el esquema.
 - Dejar el esquema listo para crear y usar perfiles de IA en los pasos siguientes.
-
----
-
-### Como usuarioi CConceder privilegio de ejecución sobre `DBMS_CLOUD_AI` Este privilegio permite que el esquema pueda invocar procedimientos de Select AI.
 
 En **SQL Worksheet**, conectado como `ADMIN`, ejecutar:
 
