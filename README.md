@@ -72,8 +72,8 @@ Al finalizar, el estudiante podrá:
 
 ## 3.2 Preparación: usuario y permisos (COFORMACION)
 
-### Debe crear la Base de Datos: version 26.ai , sa-saopaulo-1, Always Free, y en un OCI Compartment
-
+### 0) Crear una  Base de Datos: version 26.ai , sa-saopaulo-1, Always Free, y en un OCI Compartment
+---
 ### A) Crear usuario desde Database Actions (UI)
 En **Database Actions → Administration → Database Users → Create User**:
 
