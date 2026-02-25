@@ -73,9 +73,9 @@ Al finalizar, el estudiante podrá:
 ## 3.2 Preparación: usuario y permisos (COFORMACION)
 ---
 ### 0) Preliminares
-Crear un OCI Compartment `Talleres`
-Crear una Politica que permita `allow any-user to manage generative-ai-family in compartment Talleres`
-Crear una  Base de Datos: version 26.ai , sa-saopaulo-1, Always Free, en Compartment  `Talleres`
+- Crear un OCI Compartment `Talleres`
+- Crear una Politica que permita `allow any-user to manage generative-ai-family in compartment Talleres`
+- Crear una  Base de Datos: version 26.ai , sa-saopaulo-1, Always Free, en Compartment  `Talleres`
 ---
 
 ### A) Crear usuario desde Database Actions (UI)
